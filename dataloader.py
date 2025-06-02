@@ -208,8 +208,8 @@ def main():
     # 2. Télécharger les données
     price_data = download_price_data_batch(
         all_tickers,
-        start="2018-01-01",
-        end="2023-01-01",
+        start="2008-01-01",
+        end="2018-01-01",
         interval='1mo'  # 1mo pour mensuel dans yfinance
     )
     

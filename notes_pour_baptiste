@@ -1,0 +1,37 @@
+Alors des infos random sur la progression du code : 
+
+Au début, premier algo calculait l'optimisation au début, puis ne changeait jamais. C'est de la triche puisqu'il connaissait les infos de tous les temps.
+Ensuite, on est passé à une fenêtre d'analyse dynamique ("des mois glissants") pour mieux se coller au papier de recherche. 
+Les résultats étaient plutôt mauvais, c'est en fait pcq on était sur la même période. 
+Ensuite, l'impact des générations semble assez faible. la première génération est déjà (en termes de somme finale, avec une somme initiale de 1000 euros)
+à 4467 euros. Donc en fait l'optimisation est plutôt faible/lente, on ne gagne "que" 100% en plus (on finit à 5700 environ avec 300 générations).
+Maintenant, on a la bonne fenêtre temporelle et des chiffres similaires au papier ! 
+Normalement, on a les mêmes paramètres suivants : 
+- Population, génération, taux de mutation, taux de crossover, tournoi à 2 pour la sélection
+- Méthode utilisée : CAPM + (donc CAPM et momentum en plus du ratio de sharpe, les poids on été choisi un peu arbitrairement et si je suis honnête
+les bouger ne fait pas changer grand chose). On peut noter qu'avec 0,3 momentum et 0,6 CAPm on montait plus lentement vers 5700 qui semble être le palier haut. 
+Avec 0,3 et 0,3 on commence et on finit un peu plus haut : on finit vers 5880 mais  c'est vraiment le max. 
+- Le momentum voit bien 1 mois dans le passé, comme dans le papier. 
+
+Autre changement à noter : le vecteur des portfolios. Avant on avait une somme de floats qui faisait 1, maintenant c'est un vecteur de binaires
+pour chaque action. 
+
+Au niveau des infos visuelles, il faut décommenter les trucs avec écrit "DEBUG" (ligne 110~) pour voir des infos. En moyenne on a environ 210 
+assets par portfolio. 
+
+Ensuite, les données ne sont pas complètes on a des NaN. On ignore là où il y en a trop je crois, donc au final sur les 500 entreprises qu'on veut 
+on utilise 469 assets (nice). 
+
+Au niveau de la structure du code, tout est dans genetic_portfolio.py C'est une grande classe avec des méthodes, donc c'est du python orienté objet. 
+Pourquoi ? Bonne question. 
+Le dataloader.py  ne sert qu'une fois, pour construire les deux fichiers csv. Le premier, monthly prices lui aussi ne sert qu'une fois, pour 
+construire le second. C'est ce second, monthly_returns, qui est utilisé par notre script principal.
+
+
+Il faut que tu décide si tu veux supprimer le graphique matplotlib. Je suis pour pcq c'est bien et ça fait stylé, mais je suis contre pcq ça fait
+vraiment chatgpt. A toi de trancher. 
+
+Si tu vois un commentaire bizarre aussi faut le dégager pour pas faire chatgpt, dtf je pense que tu vas lui demander de tout t'analyser d'un coup
+pour avoir la structure complète. 
+
+Voilà voilà 
