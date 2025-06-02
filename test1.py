@@ -18,6 +18,7 @@ class GeneticPortfolioOptimizer:
         self.returns_data = pd.read_csv(returns_file, index_col=0, parse_dates=True)
         self.tickers = list(self.returns_data.columns)
         self.n_assets = len(self.tickers)
+
         
         # Paramètres de l'algorithme génétique
         self.POP_SIZE = pop_size
@@ -25,6 +26,9 @@ class GeneticPortfolioOptimizer:
         
         # Métriques pour l'évaluation
         self.risk_free_rate = 0.02 / 12  # Taux sans risque mensuel (2% annuel)
+        self.momentum_scores = self.compute_momentum_scores()
+        self.capm_scores = self.compute_capm_scores()
+
         
         print(f"Portfolio optimizer initialisé avec {self.n_assets} actifs")
         print(f"Période: {self.returns_data.index[0]} à {self.returns_data.index[-1]}")
@@ -41,39 +45,62 @@ class GeneticPortfolioOptimizer:
         # Normaliser pour que la somme = 1
         return weights / weights.sum()
     
+    def compute_momentum_scores(self) -> pd.Series:
+        """
+        Calcule le score de momentum : moyenne des rendements des 6 derniers mois
+        """
+        momentum = self.returns_data[-6:].mean()
+        return momentum
+
+    def compute_capm_scores(self) -> pd.Series:
+        """
+        Calcule la différence entre le rendement réel et le rendement attendu (CAPM)
+        """
+        market_returns = self.returns_data.mean(axis=1)
+        expected_market_return = market_returns.mean()
+        
+        betas = {}
+        alphas = {}
+
+        for ticker in self.tickers:
+            asset_returns = self.returns_data[ticker]
+            df = pd.DataFrame({'asset': asset_returns, 'market': market_returns}).dropna()
+            if len(df) < 10:
+                betas[ticker] = np.nan
+                continue
+            beta, alpha = np.polyfit(df['market'], df['asset'], 1)
+            betas[ticker] = beta
+            alphas[ticker] = alpha
+
+        rf = self.risk_free_rate
+        capm_returns = {ticker: rf + betas[ticker] * (expected_market_return - rf) if not np.isnan(betas[ticker]) else np.nan for ticker in self.tickers}
+        actual_returns = self.returns_data.mean()
+        
+        capm_scores = actual_returns - pd.Series(capm_returns)
+        return capm_scores
+
     def fitness(self, individual: np.ndarray) -> float:
-        """
-        Calcule le score de fitness basé sur le ratio de Sharpe
-        
-        Args:
-            individual: Poids du portfolio
-            
-        Returns:
-            Score de fitness (plus élevé = meilleur)
-        """
-        # Calculer les rendements du portfolio
-        portfolio_returns = (self.returns_data * individual).sum(axis=1)
-        
-        # Supprimer les valeurs NaN
-        portfolio_returns = portfolio_returns.dropna()
-        
+        portfolio_returns = (self.returns_data * individual).sum(axis=1).dropna()
         if len(portfolio_returns) == 0:
-            return -1000  # Pénalité pour les portfolios invalides
+            return -1000
         
-        # Calcul des métriques
         mean_return = portfolio_returns.mean()
         std_return = portfolio_returns.std()
-        
         if std_return == 0:
-            return -1000  # Éviter la division par zéro
+            return -1000
         
-        # Ratio de Sharpe (rendement excédentaire / volatilité)
         sharpe_ratio = (mean_return - self.risk_free_rate) / std_return
-        
-        # Pénaliser la concentration excessive (diversification)
-        concentration_penalty = -10 * max(0, max(individual) - 0.3)  # Pénalité si un actif > 30%
-        
-        return float(sharpe_ratio + concentration_penalty)
+
+        # Ajout des scores de momentum et CAPM
+        momentum_score = np.dot(self.momentum_scores.fillna(0), individual)
+        capm_score = np.dot(self.capm_scores.fillna(0), individual)
+
+        # Pénalité pour concentration excessive
+        concentration_penalty = -10 * max(0, max(individual) - 0.3)
+
+        # Score final pondéré
+        return sharpe_ratio + 0.3 * momentum_score + 0.3 * capm_score + concentration_penalty
+
     
     def select_parent(self, population: List[np.ndarray]) -> np.ndarray:
         """
@@ -107,7 +134,7 @@ class GeneticPortfolioOptimizer:
         # Renormaliser
         return mutated / mutated.sum()
     
-    def optimize(self, generations: int = 1000, verbose: bool = True) -> Tuple[np.ndarray, float, List[float]]:
+    def optimize(self, generations: int = 300, verbose: bool = True) -> Tuple[np.ndarray, float, List[float]]:
         """
         Lance l'optimisation génétique
         
