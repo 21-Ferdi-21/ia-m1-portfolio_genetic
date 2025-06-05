@@ -100,13 +100,13 @@ class GeneticPortfolioOptimizer:
             best_score = self.fitness(best_individual)
             best_scores_history.append(best_score)
 
-            # === DEBUG: Statistiques sur le portefeuille courant ===
             weights = best_individual / best_individual.sum()
             portfolio_returns = (self.returns_data * weights).sum(axis=1).dropna()
             cumulative_value = (1 + portfolio_returns).cumprod() * 1000 
             final_value = cumulative_value.iloc[-1] if len(cumulative_value) > 0 else 0
 
             fitness_values = [self.fitness(ind) for ind in population]
+            
             fitness_std = np.std(fitness_values)
             diversity = np.mean([np.sum(np.abs(ind - best_individual)) for ind in population])
             num_assets = best_individual.sum()
